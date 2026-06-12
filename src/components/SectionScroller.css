@@ -15,3 +15,31 @@
   height: 100svh;
   overflow: hidden;
 }
+
+/* ---- transition layer (above the sections, driven by scroll progress) ---- */
+.snap-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* gradual backdrop blur: a soft vertical gradient (GradualBlur-style) so the blur
+   ramps in rather than being a flat sheet. blur strength is animated in JS (0 px
+   when idle = invisible, no opacity needed so backdrop-filter stays valid). */
+.snap-transition__blur {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), #000 45%, #000 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), #000 45%, #000 100%);
+}
+
+/* transition image; opacity is animated in JS, peaking at the midpoint */
+.snap-transition__img {
+  position: absolute;
+  inset: 0;
+  background: #000 center / cover no-repeat url('/images/transition1.png');
+  opacity: 0;
+}

@@ -60,24 +60,43 @@
   pointer-events: auto;
 }
 
-/* glass division: a frosted pill that wraps the three buttons. backdrop-filter
-   blurs the hero behind it; the inset top highlight is the glass rim. */
+/* glass division: a clearer (low-frost) glass pill. Low blur lets the hero read
+   through; the coloured left/right outer shadows fake the chromatic-aberration
+   fringe of real glass; the ::before is the specular (anisotropy-ish) streak.
+   NOTE: true refraction / chromatic aberration like @react-three/drei's
+   MeshTransmissionMaterial needs a WebGL pass (FluidGlass) — this is the CSS read. */
 .hero__links {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0;
   padding: 6px;
   border-radius: 24px;
-  background: rgba(12, 12, 16, 0.38);
-  -webkit-backdrop-filter: blur(16px) saturate(125%);
-  backdrop-filter: blur(16px) saturate(125%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;            /* clip the sheen streak to the pill */
+  background: rgba(18, 18, 26, 0.22);
+  -webkit-backdrop-filter: blur(6px) saturate(165%) brightness(1.06);
+  backdrop-filter: blur(6px) saturate(165%) brightness(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.25),
-    0 12px 34px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),       /* top glass rim */
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.22),
+    1.5px 0 9px rgba(255, 60, 90, 0.18),            /* chromatic fringe — warm */
+    -1.5px 0 9px rgba(70, 150, 255, 0.18),          /* chromatic fringe — cool */
+    0 16px 38px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
+}
+/* specular streak across the glass */
+.hero__links::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.16) 49%,
+    rgba(255, 255, 255, 0.04) 53%,
+    transparent 64%);
+  pointer-events: none;
 }
 
 .hero__link {
@@ -93,6 +112,8 @@
   padding: 0 clamp(18px, 2.2vw, 30px);
   border-radius: 16px;
   pointer-events: auto;
+  position: relative;   /* sit above the ::before glass sheen */
+  z-index: 1;
   transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
 /* each button is its own glass cell on hover */
