@@ -9,7 +9,7 @@
 //
 // texturePosition / textureVelocity / resolution are injected by GPUComputationRenderer.
 
-import { SIMPLEX_3D, HELPERS, CURL } from './common.js';
+import { SIMPLEX_3D, HELPERS, CURL, ROUNDBOX } from './common.js';
 
 const SIM_UNIFORMS = /* glsl */ `
 uniform float uDt;
@@ -41,6 +41,17 @@ uniform float uMouseRadius;
 uniform float uMouseLift;
 uniform float uMouseAspect;  // image aspect, so the excited region is circular
 uniform float uEnergyDecay;
+
+// --- nav button attraction (border orbit); inert while uBtnActive == 0 ---
+// All button coords are in ASPECT-CORRECTED image-uv space: posAc = pos * vec2(uMouseAspect, 1).
+uniform float uBtnActive;    // 0..1 hover ramp
+uniform vec2  uBtnCenter;    // button centre (ac space)
+uniform vec2  uBtnHalf;      // button half-extents (ac space)
+uniform float uBtnRadius;    // corner radius (ac space)
+uniform float uBtnReach;     // capture falloff: how far grains get recruited
+uniform float uBtnBand;      // how tightly grains hug the border while orbiting
+uniform float uBtnPull;      // radial accel onto the border
+uniform float uBtnSwirl;     // tangential accel along the border
 `;
 
 const SIM_FUNCS = /* glsl */ `
@@ -82,6 +93,13 @@ void main(){
     vec2 dm = (pos - uMouse) * vec2(uMouseAspect, 1.0);
     float ex = exp(-dot(dm, dm) / (uMouseRadius * uMouseRadius)) * uMouseActive;
     energy = max(energy, ex);
+    // recruited-by-a-button grains glow too (and the render uses energy to keep
+    // them visible while they travel/orbit off the sand)
+    if (uBtnActive > 0.001) {
+      vec2 pAc = pos * vec2(uMouseAspect, 1.0);
+      float bd = sdRoundBox(pAc - uBtnCenter, uBtnHalf, uBtnRadius);
+      energy = max(energy, exp(-(bd * bd) / (uBtnReach * uBtnReach)) * uBtnActive);
+    }
     energy *= max(0.0, 1.0 - uEnergyDecay * uDt);
   }
 
@@ -125,6 +143,20 @@ void main(){
   vec2 push = (length(toM) > 1e-4 ? normalize(toM) : vec2(0.0, 1.0));
   acc += (push + vec2(0.0, uMouseLift)) * uMouseStrength * fall;
 
+  // nav button attraction: recruit nearby grains, spring them onto the rounded
+  // border (d -> 0) and push them tangentially so they orbit it. Aspect-corrected
+  // so the box + corners read correctly on screen; force mapped back to image-uv.
+  if (uBtnActive > 0.001) {
+    vec2 bp = pos * vec2(uMouseAspect, 1.0) - uBtnCenter;
+    float bd = sdRoundBox(bp, uBtnHalf, uBtnRadius);
+    vec2 bn = sdRoundBoxGrad(bp, uBtnHalf, uBtnRadius);   // outward border normal
+    float reach = exp(-(bd * bd) / (uBtnReach * uBtnReach));
+    float band  = exp(-(bd * bd) / (uBtnBand * uBtnBand));
+    vec2 onto = -bn * (bd >= 0.0 ? 1.0 : -1.0);           // toward the border line
+    vec2 accAc = onto * uBtnPull * reach + perp(bn) * uBtnSwirl * band;
+    acc += accAc * uBtnActive * vec2(1.0 / uMouseAspect, 1.0);
+  }
+
   vec2 nvel = V.xy + acc * uDt;
   nvel += (baseVel - nvel) * uBaseReturn * uDt;          // relax to the drift
   nvel *= clamp(1.0 - uDamping * uDt, 0.0, 1.0);
@@ -137,9 +169,9 @@ void main(){
 `;
 
 export function buildPositionShader() {
-  return HELPERS + SIM_UNIFORMS + SIM_FUNCS + POSITION_MAIN;
+  return HELPERS + ROUNDBOX + SIM_UNIFORMS + SIM_FUNCS + POSITION_MAIN;
 }
 
 export function buildVelocityShader() {
-  return SIMPLEX_3D + HELPERS + CURL + SIM_UNIFORMS + SIM_FUNCS + VELOCITY_MAIN;
+  return SIMPLEX_3D + HELPERS + CURL + ROUNDBOX + SIM_UNIFORMS + SIM_FUNCS + VELOCITY_MAIN;
 }

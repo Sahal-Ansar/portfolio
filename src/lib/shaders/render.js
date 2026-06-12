@@ -67,9 +67,12 @@ void main(){
 
   float life = smoothstep(0.0, uFadeIn, age) * smoothstep(0.0, uFadeOut, maxLife - age);
 
-  // confine to the sand: fade out anywhere the mask isn't white
+  // confine to the sand: fade out anywhere the mask isn't white...
   float m = texture2D(uMaskTex, pos).r;
   float mask = smoothstep(0.25, 0.6, m);
+  // ...but excited/recruited grains (energy) stay visible so they can travel up
+  // to a nav button and orbit it, off the sand.
+  mask = max(mask, energy);
 
   // strong per-grain variation so the field reads as scattered sparkle, not an
   // even dot-screen: most grains are dim, a sparse few catch the light brightly.
@@ -81,8 +84,8 @@ void main(){
   vec3 scene = texture2D(uBaseTex, pos).rgb;
   vColor = scene * uColorBoost * (0.18 + spark * 1.7) * (1.0 + energy * uEnergyBoost);
 
-  // excited grains (mouse-lit) grow to ~1.25x the base size as well as brighter
-  gl_PointSize = uGrainSize * (0.35 + spark * 1.2 + r2 * 0.4) * uDpr * life * (1.0 + energy * 0.25);
+  // excited grains (mouse-lit) grow to ~1.325x the base size as well as brighter
+  gl_PointSize = uGrainSize * (0.35 + spark * 1.2 + r2 * 0.4) * uDpr * life * (1.0 + energy * 0.325);
   vAlpha = life * mask;
 }
 `;

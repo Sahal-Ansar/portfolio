@@ -23,8 +23,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { buildPositionShader, buildVelocityShader } from './shaders/sim.js';
 import { BASE_VERT, BASE_FRAG, GRAIN_VERT, GRAIN_FRAG } from './shaders/render.js';
 
-const BASE_URL = '/background_new.png';      // the static scene
-const MASK_URL = '/particle_area_mask.png';  // white = sand the grains live on
+const BASE_URL = '/images/background_new.png';      // the static scene
+const MASK_URL = '/images/particle_area_mask.png';  // white = sand the grains live on
 const SPAWN_DIM = 128; // spawn lookup is SPAWN_DIM^2 in-mask points
 
 export const DEFAULTS = {
@@ -45,9 +45,9 @@ export const DEFAULTS = {
   curlSpeed: 0.06,
 
   // ---- grain look ----
-  grainSize: 2.4,          // base max size; excited grains grow ~1.25x (see shader)
+  grainSize: 2.4,          // base max size; excited grains grow ~1.325x (see shader)
   colorBoost: 1.5,         // grains read a touch brighter than the scene
-  energyBoost: 2.66,       // extra brightness for excited (mouse-lit) grains
+  energyBoost: 3.19,       // extra brightness for excited (mouse-lit) grains
   fadeIn: 0.4,
   fadeOut: 1.0,
 
@@ -58,6 +58,13 @@ export const DEFAULTS = {
   mouseLift: 0.7,          // upward kick component
   mouseSmooth: 0.18,
   energyDecay: 2.2,        // how fast the glow relaxes once the cursor leaves
+
+  // ---- nav button attraction (border orbit) ----
+  btnReach: 0.45,          // how far grains get recruited toward a hovered button
+  btnBand: 0.05,           // how tightly they hug the border while orbiting
+  btnPull: 1.4,            // radial accel onto the rounded border
+  btnSwirl: 1.2,           // tangential accel along the border
+  btnRamp: 0.1,            // hover ramp speed (per-frame lerp toward on/off)
 
   // ---- post ----
   bloom: true,
@@ -89,6 +96,14 @@ export default class LightField {
     this.target = new THREE.Vector2(0.5, 0.5);
     this.smooth = new THREE.Vector2(0.5, 0.5);
     this.pointerInside = false;
+
+    // nav-button attractor (aspect-corrected image-uv); driven by setButton()
+    this._btn = {
+      centerAc: new THREE.Vector2(0.5, 0.5),
+      halfAc: new THREE.Vector2(0.001, 0.001),
+      radiusAc: 0,
+      target: 0 // 1 while a button is hovered, 0 otherwise (ramped in _loop)
+    };
 
     this._boundResize = this._onResize.bind(this);
 
@@ -256,7 +271,14 @@ export default class LightField {
       uMouse: u(new THREE.Vector2(0.5, 0.5)), uMouseActive: u(0),
       uMouseStrength: u(c.mouseStrength), uMouseRadius: u(c.mouseRadius),
       uMouseLift: u(c.mouseLift), uEnergyDecay: u(c.energyDecay),
-      uMouseAspect: u(this.imageAspect) // make the excited region circular on screen
+      uMouseAspect: u(this.imageAspect), // make the excited region circular on screen
+      // nav button attractor
+      uBtnActive: u(0),
+      uBtnCenter: u(new THREE.Vector2(0.5, 0.5)),
+      uBtnHalf: u(new THREE.Vector2(0.001, 0.001)),
+      uBtnRadius: u(0),
+      uBtnReach: u(c.btnReach), uBtnBand: u(c.btnBand),
+      uBtnPull: u(c.btnPull), uBtnSwirl: u(c.btnSwirl)
     };
     Object.assign(this.posVar.material.uniforms, this.simUniforms);
     Object.assign(this.velVar.material.uniforms, this.simUniforms);
@@ -364,6 +386,28 @@ export default class LightField {
   }
   setPointerInside(inside) { this.pointerInside = inside; }
 
+  // ---- nav button attractor ----
+  // Aim the attractor at a DOM button. Pass the button's getBoundingClientRect()
+  // and the canvas container's rect; grains get recruited toward the rounded
+  // border and orbit it until clearButton(). Coords are converted screen ->
+  // field-uv -> image-uv (same cover-fit as setPointer) -> aspect-corrected.
+  setButton(btnRect, contRect) {
+    if (!this.uImgUvScale) return;
+    const s = this.uImgUvScale.value;
+    const cw = contRect.width || 1;
+    const ch = contRect.height || 1;
+    const cx = (btnRect.left + btnRect.width / 2 - contRect.left) / cw;
+    const cy = 1 - (btnRect.top + btnRect.height / 2 - contRect.top) / ch; // y up
+    const hx = (btnRect.width / 2) / cw;
+    const hy = (btnRect.height / 2) / ch;
+    const a = this.imageAspect; // ac space: x * aspect so the box reads square on screen
+    this._btn.centerAc.set(((cx - 0.5) * s.x + 0.5) * a, (cy - 0.5) * s.y + 0.5);
+    this._btn.halfAc.set(hx * s.x * a, hy * s.y);
+    this._btn.radiusAc = (10 / ch) * s.y; // 10px corner radius, isotropic in ac space
+    this._btn.target = 1;
+  }
+  clearButton() { this._btn.target = 0; }
+
   start() {
     if (!this.ready) { this._wantStart = true; return; }
     if (this.running) return;
@@ -393,6 +437,13 @@ export default class LightField {
     } else {
       su.uMouseActive.value = 0;
     }
+
+    // nav button attractor: ramp hover strength + feed the current target rect
+    const b = this._btn;
+    su.uBtnActive.value += (b.target - su.uBtnActive.value) * c.btnRamp;
+    su.uBtnCenter.value.copy(b.centerAc);
+    su.uBtnHalf.value.copy(b.halfAc);
+    su.uBtnRadius.value = b.radiusAc;
 
     if (!c.reducedMotion) {
       su.uTime.value += dt;
@@ -456,6 +507,11 @@ README — tunables (config passed to LightField / DEFAULTS):
     grains near the cursor shimmer + glow. mouseStrength (scatter/lift),
     mouseRadius (region size, aspect-corrected), mouseLift (upward kick),
     mouseSmooth (cursor follow), energyDecay (glow relax), energyBoost (glow amount)
+
+  NAV BUTTON ATTRACTION (drive via setButton(btnRect, contRect) / clearButton())
+    grains fly to a hovered button + orbit its rounded border, then relax back.
+    btnReach (recruit radius), btnBand (border hug), btnPull (radial onto border),
+    btnSwirl (tangential orbit), btnRamp (hover ramp speed)
 
   POST
     bloom, bloomStrength, bloomRadius, bloomThreshold (kept high + subtle so the

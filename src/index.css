@@ -1,3 +1,20 @@
+/* --- custom display faces (files live in public/fonts/) --- */
+@font-face {
+  font-family: 'Oldschool Tag';
+  src: url('/fonts/OldschoolTag.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Mondapick';
+  src: url('/fonts/Mondapick.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Beligat';
+  src: url('/fonts/Beligat.otf') format('opentype');
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {

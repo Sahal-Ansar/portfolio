@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import LightField from '../lib/LightField.js';
 import './Hero.css';
 
-// Course-correction phase: focus on matching ref.png's lighting/atmosphere.
-// The nav + hero text stay off for now; mouse interaction is live (grains near
-// the cursor get excited + glow).
-const SHOW_OVERLAY = false;
+// Mouse interaction is live; nav-button hover recruits particles to orbit the button.
 const INTERACTION = true;
 
 // --- environment detection ------------------------------------------------
@@ -33,6 +30,7 @@ function webglSupported() {
 export default function Hero() {
   const containerRef = useRef(null);
   const engineRef = useRef(null);
+  const mainRef = useRef(null);
   const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
@@ -51,7 +49,6 @@ export default function Hero() {
     if (mobile) {
       config.simSize = 110;
       config.maxDpr = 1.5;
-      config.pointScale = 2.7;
     }
     if (reduced) {
       config.reducedMotion = true;
@@ -86,7 +83,7 @@ export default function Hero() {
     const onVisibility = () => updateRunning();
     document.addEventListener('visibilitychange', onVisibility);
 
-    // --- pointer -> sim (disabled for now) ---
+    // --- pointer -> sim (cursor excitement) ---
     let onPointerMove, onPointerLeave;
     if (INTERACTION) {
       onPointerMove = (e) => {
@@ -113,20 +110,40 @@ export default function Hero() {
     };
   }, []);
 
-  // --- Phase 2 stub: nav-button particle attraction --------------------------
-  // When built, these would push/clear an attractor so particles float to the
-  // hovered button and orbit it (reusing the engine's swirl-around-a-point force).
-  // const onNavEnter = (i, el) => {
-  //   const eng = engineRef.current; if (!eng) return;
-  //   const r = el.getBoundingClientRect();
-  //   const c = containerRef.current.getBoundingClientRect();
-  //   eng.attractors[i].pos.set(
-  //     (r.left + r.width / 2 - c.left) / c.width,
-  //     1 - (r.top + r.height / 2 - c.top) / c.height
-  //   );
-  //   eng.attractors[i].active = true;
-  // };
-  // const onNavLeave = (i) => { engineRef.current && (engineRef.current.attractors[i].active = false); };
+  // --- fit "SAHAL ANSAR" to span the full title width (font-metric agnostic) ---
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const fit = () => {
+      const boxW = el.clientWidth; // block + width:100% => available content width
+      // measure the glyph run at a reference size: take it out of flow so it
+      // shrink-wraps to the text regardless of the flex layout around it
+      el.style.position = 'absolute';
+      el.style.width = 'auto';
+      el.style.whiteSpace = 'nowrap';
+      el.style.fontSize = '100px';
+      const textW = el.getBoundingClientRect().width;
+      el.style.position = '';
+      el.style.width = '';
+      el.style.whiteSpace = '';
+      if (textW > 0 && boxW > 0) el.style.fontSize = (100 * boxW / textW) + 'px';
+    };
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.documentElement);
+    let cancelled = false;
+    document.fonts?.ready?.then(() => { if (!cancelled) fit(); });
+    fit();
+    return () => { cancelled = true; ro.disconnect(); };
+  }, []);
+
+  // --- nav hover: recruit particles to orbit the hovered button ---
+  const onNavEnter = (e) => {
+    const eng = engineRef.current;
+    const cont = containerRef.current;
+    if (!eng || !cont) return;
+    eng.setButton(e.currentTarget.getBoundingClientRect(), cont.getBoundingClientRect());
+  };
+  const onNavLeave = () => engineRef.current?.clearButton();
 
   return (
     <section className="hero">
@@ -134,28 +151,39 @@ export default function Hero() {
       <div className="hero__canvas" ref={containerRef} aria-hidden="true" />
       {fallback && <div className="hero__poster" aria-hidden="true" />}
 
-      {/* Overlay hidden for now while we match ref.png's lighting (SHOW_OVERLAY). */}
-      {SHOW_OVERLAY && (
-        <div className="hero__overlay">
-          <nav className="hero__nav">
-            {/* TODO: replace font — brushy display face for the logo (stand-in: Permanent Marker) */}
-            <a className="hero__logo" href="#home">Sahal</a>
-            <ul className="hero__links">
-              {/* Phase 2: add onMouseEnter={(e)=>onNavEnter(0,e.currentTarget)} onMouseLeave={()=>onNavLeave(0)} */}
-              <li><a href="#home">Home</a></li>
-              <li><a href="#projects">Projects</a></li>
-              <li><button type="button" className="hero__cta">Contact Me</button></li>
-            </ul>
-          </nav>
+      <div className="hero__overlay">
+        <nav className="hero__nav">
+          {/* TODO: replace with Lottie. Font: Oldschool Tag (drop in public/fonts/) */}
+          <a className="hero__logo" href="#home">Sahal</a>
 
-          <div className="hero__intro">
-            <span className="hero__hello">Hello! I&rsquo;m</span>
-            {/* TODO: replace font — calligraphic script for the name (stand-in: Tangerine / Pinyon Script) */}
-            <h1 className="hero__name">Sahal Ansar</h1>
-            <span className="hero__role">UI/UX Developer</span>
-          </div>
+          <ul className="hero__links">
+            <li>
+              <a className="hero__link" href="#about"
+                 onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>About</a>
+            </li>
+            <li>
+              <a className="hero__link" href="#projects"
+                 onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>Projects</a>
+            </li>
+            <li>
+              <a className="hero__link hero__cta" href="#contact"
+                 onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>
+                <span className="hero__cta-label">Contact Me</span>
+                <span className="hero__arrow">
+                  <img className="hero__arrow-img hero__arrow-img--base" src="/images/arrow.png" alt="" />
+                  <img className="hero__arrow-img hero__arrow-img--hot" src="/images/arrow_highlighted.png" alt="" />
+                </span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        {/* TODO: title fills are placeholders — swap in dictated values. Font: Beligat */}
+        <div className="hero__title">
+          <span className="hero__title-line hero__title-top">I&rsquo;M</span>
+          <span ref={mainRef} className="hero__title-line hero__title-main">SAHAL ANSAR</span>
         </div>
-      )}
+      </div>
     </section>
   );
 }

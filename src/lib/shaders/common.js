@@ -79,6 +79,25 @@ vec2 curl(vec2 p, float t){
 }
 `;
 
+// Signed distance to a rounded rectangle + its (outward) normal. Used by the
+// nav-button attraction: grains are sprung onto the border (d -> 0) and pushed
+// tangentially so they orbit it. All coords are aspect-corrected (see velocity
+// shader) so the box reads with the right proportions + rounded corners on screen.
+export const ROUNDBOX = /* glsl */ `
+float sdRoundBox(vec2 p, vec2 b, float r){
+  vec2 q = abs(p) - b + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+vec2 sdRoundBoxGrad(vec2 p, vec2 b, float r){
+  vec2 e = vec2(0.0015, 0.0);
+  float dx = sdRoundBox(p + e.xy, b, r) - sdRoundBox(p - e.xy, b, r);
+  float dy = sdRoundBox(p + e.yx, b, r) - sdRoundBox(p - e.yx, b, r);
+  vec2 g = vec2(dx, dy);
+  float l = length(g);
+  return l > 1e-6 ? g / l : vec2(0.0, 1.0);
+}
+`;
+
 // "Swirl around a point" force, reused by the mouse and (Phase 2) nav attractors.
 // Mostly tangential (orbit), plus a tunable radial pull, with a gaussian falloff.
 // All coords are in aspect-corrected space so the orbit reads as circular on screen.

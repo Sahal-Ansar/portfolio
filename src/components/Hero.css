@@ -25,7 +25,7 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: #000 center / cover no-repeat url('/background_new.png');
+  background: #000 center / cover no-repeat url('/images/background_new.png');
 }
 
 /* ---- overlay: wrapper ignores pointer; interactive bits re-enable it ---- */
@@ -35,111 +35,144 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1.5rem, 4vw, 4rem);
   pointer-events: none;
 }
 
-/* ---- nav ---- */
+/* ---- nav (top bar) ---- */
 .hero__nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: clamp(0.75rem, 1.6vw, 20px) clamp(1rem, 2.2vw, 30px);
 }
 
 .hero__logo {
-  /* TODO: replace font — brushy display face (stand-in: Permanent Marker) */
-  font-family: 'Permanent Marker', system-ui, sans-serif;
-  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
-  color: #f4ead8;
+  /* Font: Oldschool Tag (drop file in public/fonts/). Will become a Lottie. */
+  font-family: 'Oldschool Tag', system-ui, sans-serif;
+  font-size: clamp(2rem, 3.4vw, 50px);
+  letter-spacing: -1.5px;
+  line-height: 1;
+  color: #000;
   text-decoration: none;
-  letter-spacing: 0.02em;
+  white-space: nowrap;
   pointer-events: auto;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
 }
 
 .hero__links {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 2.4vw, 2.6rem);
+  gap: clamp(0.5rem, 1.4vw, 20px);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.hero__links a,
-.hero__cta {
-  pointer-events: auto;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: clamp(0.85rem, 1.1vw, 1rem);
-  font-weight: 500;
-  color: #f1e6d6;
+.hero__link {
+  /* Font: Mondapick. 24px in the design, scaled down 33% per request. */
+  font-family: 'Mondapick', system-ui, sans-serif;
+  font-size: clamp(0.67rem, 1vw, 16px);
+  color: #fff;
   text-decoration: none;
-  letter-spacing: 0.01em;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
-  transition: color 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  padding: clamp(6px, 1vh, 10px) clamp(16px, 2.6vw, 40px);
+  pointer-events: auto;
+  transition: color 0.25s ease;
 }
-.hero__links a:hover { color: #ffd79a; }
+.hero__link:hover { color: #FFC84A; }
 
+/* Contact Me carries the arrow icon */
 .hero__cta {
-  background: transparent;
-  border: 1px solid rgba(255, 215, 160, 0.55);
-  color: #ffe6c2;
-  border-radius: 999px;
-  padding: 0.5rem 1.1rem;
-  cursor: pointer;
-}
-.hero__cta:hover {
-  background: rgba(255, 200, 130, 0.14);
-  border-color: rgba(255, 215, 160, 0.9);
+  gap: 8px;
+  padding-left: clamp(12px, 1.8vw, 28px);
+  padding-right: clamp(12px, 1.8vw, 28px);
 }
 
-/* ---- hero intro text (lower-left) ---- */
-.hero__intro {
-  max-width: min(90vw, 720px);
+.hero__arrow {
+  position: relative;
+  flex: none;
+  /* 24px in the design, scaled down 33% per request */
+  width: clamp(12px, 1vw, 16px);
+  height: clamp(12px, 1vw, 16px);
+}
+.hero__arrow-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.25s ease;
+}
+.hero__arrow-img--hot { opacity: 0; }
+.hero__cta:hover .hero__arrow-img--base { opacity: 0; }
+.hero__cta:hover .hero__arrow-img--hot { opacity: 1; }
+
+/* ---- title block (bottom) ---- */
+.hero__title {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  margin-bottom: clamp(1rem, 4vh, 3rem);
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(0px, 0.6vw, 10px);
+  width: 100%;
+  /* smaller side padding so the fitted "SAHAL ANSAR" spans nearly the full screen */
+  padding: clamp(0.75rem, 1.6vw, 20px) clamp(0.75rem, 2.2vw, 40px);
 }
 
-.hero__hello {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 300;
-  font-size: clamp(1rem, 1.6vw, 1.35rem);
-  color: #f3e8d8;
-  margin-left: 0.35rem;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.65);
+.hero__title-line {
+  /* Font: Beligat (drop file in public/fonts/) */
+  font-family: 'Beligat', Georgia, 'Times New Roman', serif;
+  line-height: 0.9;
+  margin: 0;
+  display: block;
 }
 
-.hero__name {
-  /* TODO: replace font — calligraphic script (stand-in: Tangerine / Pinyon Script) */
-  font-family: 'Tangerine', 'Pinyon Script', cursive;
-  font-weight: 700;
-  font-size: clamp(4.5rem, 13vw, 11rem);
-  line-height: 0.82;
-  margin: 0.1em 0 0.05em;
-  background: linear-gradient(95deg, #ffdfa0 0%, #ffbf6a 35%, #ffe9c4 60%, #ffb454 100%);
+/* Both title lines reproduce the Figma fills: layered colours blended (via
+   background-blend-mode) against the hero photo behind them, then clipped to the
+   glyphs. The photo layer is `fixed` so it lines up with the full-screen canvas. */
+.hero__title-line {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.55));
+  -webkit-text-fill-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
-.hero__role {
-  align-self: flex-end;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 400;
-  font-size: clamp(0.9rem, 1.4vw, 1.2rem);
-  letter-spacing: 0.04em;
-  color: #f0e3d1;
-  margin-right: 0.4rem;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.65);
+.hero__title-top {
+  width: 100%;
+  text-align: left;
+  font-size: clamp(2.5rem, 10vw, 200px);
+  letter-spacing: -0.02em;
+  /* "I'M": 1x #FFFFFF @ soft-light over the photo (2 layers disabled for now) */
+  background-image:
+    linear-gradient(#ffffff, #ffffff),
+    url('/images/background_new.png');
+  background-blend-mode: soft-light, normal;
 }
 
-/* ---- small screens: stack the nav links a touch tighter ---- */
+.hero__title-main {
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  font-size: clamp(3rem, 19vw, 400px);
+  letter-spacing: -0.02em;
+  /* "SAHAL ANSAR": #FFFFFF @ hue over #E3E3E3 @ difference over the photo */
+  background-image:
+    linear-gradient(#ffffff, #ffffff),
+    linear-gradient(#e3e3e3, #e3e3e3),
+    url('/images/background_new.png');
+  background-blend-mode: hue, difference, normal;
+}
+
+/* ---- small screens ---- */
 @media (max-width: 560px) {
-  .hero__links { gap: 0.9rem; }
-  .hero__cta { padding: 0.4rem 0.8rem; }
-  .hero__name { font-size: clamp(3.5rem, 22vw, 6rem); }
+  .hero__links { gap: 0.25rem; }
+  .hero__link { padding: 6px 12px; }
 }
