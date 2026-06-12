@@ -60,13 +60,24 @@
   pointer-events: auto;
 }
 
+/* glass division: a frosted pill that wraps the three buttons. backdrop-filter
+   blurs the hero behind it; the inset top highlight is the glass rim. */
 .hero__links {
   display: flex;
   align-items: center;
-  gap: clamp(0.5rem, 1.4vw, 20px);
-  list-style: none;
+  gap: 6px;
   margin: 0;
-  padding: 0;
+  padding: 6px;
+  border-radius: 24px;
+  background: rgba(12, 12, 16, 0.38);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(16px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.25),
+    0 12px 34px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
 }
 
 .hero__link {
@@ -78,17 +89,24 @@
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  padding: clamp(6px, 1vh, 10px) clamp(16px, 2.6vw, 40px);
+  height: clamp(38px, 3.8vw, 48px);
+  padding: 0 clamp(18px, 2.2vw, 30px);
+  border-radius: 16px;
   pointer-events: auto;
-  transition: color 0.25s ease;
+  transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
-.hero__link:hover { color: #FFC84A; }
+/* each button is its own glass cell on hover */
+.hero__link:hover {
+  color: #FFC84A;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+}
 
 /* Contact Me carries the arrow icon */
 .hero__cta {
   gap: 8px;
-  padding-left: clamp(12px, 1.8vw, 28px);
-  padding-right: clamp(12px, 1.8vw, 28px);
+  padding-left: clamp(14px, 1.8vw, 24px);
+  padding-right: clamp(12px, 1.6vw, 20px);
 }
 
 .hero__arrow {

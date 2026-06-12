@@ -1,0 +1,17 @@
+/* viewport-locked window; the track is taller and is translated to snap sections */
+.snap-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.snap-track {
+  will-change: transform;
+}
+
+.snap-section {
+  width: 100vw;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}

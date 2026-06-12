@@ -34,5 +34,8 @@ body,
 }
 
 body {
-  overflow-x: hidden;
+  /* the SectionScroller owns the viewport and jacks scroll, so the page itself
+     never scrolls natively */
+  overflow: hidden;
+  height: 100%;
 }

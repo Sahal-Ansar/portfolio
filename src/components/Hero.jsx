@@ -27,11 +27,14 @@ function webglSupported() {
   }
 }
 
-export default function Hero() {
+export default function Hero({ active = true }) {
   const containerRef = useRef(null);
   const engineRef = useRef(null);
   const mainRef = useRef(null);
   const clearTimer = useRef(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const updateRunningRef = useRef(() => {});
   const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
@@ -68,12 +71,13 @@ export default function Hero() {
     }
     engineRef.current = engine;
 
-    // --- run only while visible + tab focused ---
+    // --- run only while the hero is the active section, visible + tab focused ---
     let intersecting = true;
     const updateRunning = () => {
-      if (intersecting && !document.hidden) engine.start();
+      if (activeRef.current && intersecting && !document.hidden) engine.start();
       else engine.stop();
     };
+    updateRunningRef.current = updateRunning;
 
     const io = new IntersectionObserver(
       (entries) => { intersecting = entries[0].isIntersecting; updateRunning(); },
@@ -110,6 +114,9 @@ export default function Hero() {
       engineRef.current = null;
     };
   }, []);
+
+  // stop/start the engine when this section becomes (in)active
+  useEffect(() => { updateRunningRef.current(); }, [active]);
 
   // --- fit "SAHAL ANSAR" to span the full title width (font-metric agnostic) ---
   useEffect(() => {
@@ -163,26 +170,21 @@ export default function Hero() {
           {/* TODO: replace with Lottie. Font: Oldschool Tag (drop in public/fonts/) */}
           <a className="hero__logo" href="#home">Sahal</a>
 
-          <ul className="hero__links">
-            <li>
-              <a className="hero__link" href="#about"
-                 onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>About</a>
-            </li>
-            <li>
-              <a className="hero__link" href="#projects"
-                 onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>Projects</a>
-            </li>
-            <li>
-              <a className="hero__link hero__cta" href="#contact"
-                 onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>
-                <span className="hero__cta-label">Contact Me</span>
-                <span className="hero__arrow">
-                  <img className="hero__arrow-img hero__arrow-img--base" src="/images/arrow.png" alt="" />
-                  <img className="hero__arrow-img hero__arrow-img--hot" src="/images/arrow_highlighted.png" alt="" />
-                </span>
-              </a>
-            </li>
-          </ul>
+          {/* glass division: frosted pill wrapping the three buttons */}
+          <div className="hero__links">
+            <a className="hero__link" href="#about"
+               onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>About</a>
+            <a className="hero__link" href="#projects"
+               onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>Projects</a>
+            <a className="hero__link hero__cta" href="#contact"
+               onMouseEnter={onNavEnter} onMouseLeave={onNavLeave}>
+              <span className="hero__cta-label">Contact Me</span>
+              <span className="hero__arrow">
+                <img className="hero__arrow-img hero__arrow-img--base" src="/images/arrow.png" alt="" />
+                <img className="hero__arrow-img hero__arrow-img--hot" src="/images/arrow_highlighted.png" alt="" />
+              </span>
+            </a>
+          </div>
         </nav>
 
         {/* TODO: title fills are placeholders — swap in dictated values. Font: Beligat */}

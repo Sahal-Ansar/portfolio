@@ -1,34 +1,35 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Hero from './components/Hero.jsx';
+import About from './components/About.jsx';
+import SectionScroller from './components/SectionScroller.jsx';
 
 export default function App() {
-  // Lock browser zoom. The layout is sized in vw and the title is fitted to the
-  // viewport width, so a stray ctrl-scroll / ctrl-+/- would throw it off. (Can't
-  // block the browser's menu zoom, but this covers keyboard, wheel and pinch.)
+  const [active, setActive] = useState(0); // 0 = hero, 1 = about
+
+  // Lock browser zoom (keyboard + pinch). Wheel-zoom (ctrl+wheel) is already
+  // blocked by the scroller, which preventDefaults all wheel input.
   useEffect(() => {
-    const onWheel = (e) => { if (e.ctrlKey) e.preventDefault(); };
     const onKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '_', '0'].includes(e.key)) {
-        e.preventDefault();
-      }
+      if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '_', '0'].includes(e.key)) e.preventDefault();
     };
-    const onGesture = (e) => e.preventDefault(); // Safari pinch-zoom
-    window.addEventListener('wheel', onWheel, { passive: false });
+    const onGesture = (e) => e.preventDefault();
     window.addEventListener('keydown', onKey);
     window.addEventListener('gesturestart', onGesture);
     window.addEventListener('gesturechange', onGesture);
     return () => {
-      window.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('gesturestart', onGesture);
       window.removeEventListener('gesturechange', onGesture);
     };
   }, []);
 
+  const onActiveChange = useCallback((i) => setActive(i), []);
+
   return (
-    <main>
-      <Hero />
-      {/* Out of scope for now: Projects, Contact, etc. */}
-    </main>
+    <SectionScroller onActiveChange={onActiveChange}>
+      {/* hero engine runs only while the hero section is the active one */}
+      <Hero active={active === 0} />
+      <About />
+    </SectionScroller>
   );
 }
