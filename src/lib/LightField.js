@@ -34,7 +34,7 @@ export const DEFAULTS = {
   slopeDir: [0.22, -0.62], // downhill direction in image space (y up, so -y = down)
   baseReturn: 1.1,         // relax velocity back to the drift
   damping: 0.15,
-  maxSpeed: 0.32,
+  maxSpeed: 0.42,          // headroom so orbiting grains can revolve briskly
   lifeMin: 3.0,
   lifeMax: 8.0,
   bottom: -0.02,           // respawn once a grain falls below this v
@@ -57,14 +57,15 @@ export const DEFAULTS = {
   mouseRadius: 0.108,      // size of the excited region (image-v units, circular)
   mouseLift: 0.7,          // upward kick component
   mouseSmooth: 0.18,
-  energyDecay: 2.2,        // how fast the glow relaxes once the cursor leaves
+  energyDecay: 1.3,        // glow relax: slower, so released grains stay lit as they drift back
 
   // ---- nav button attraction (border orbit) ----
-  btnReach: 0.45,          // how far grains get recruited toward a hovered button
-  btnBand: 0.05,           // how tightly they hug the border while orbiting
-  btnPull: 1.4,            // radial accel onto the rounded border
-  btnSwirl: 1.2,           // tangential accel along the border
-  btnRamp: 0.1,            // hover ramp speed (per-frame lerp toward on/off)
+  btnReach: 0.75,          // wide capture falloff (gaussian sigma): how far grains get recruited
+  btnBand: 0.001,           // tight ring (ac units): how close to the border grains revolve
+  btnPull: 3,            // radial accel toward the border line
+  btnSwirl: 0.001,           // tangential accel: how fast grains revolve along the border (lower = slower/heavier)
+  btnRamp: 0.008,            // hover on/off ramp speed (per-frame lerp)
+  btnMove: 0.18,           // how fast the orbit slides between buttons (per-frame lerp)
 
   // ---- post ----
   bloom: true,
@@ -83,7 +84,7 @@ export default class LightField {
   constructor(container, options = {}) {
     this.container = container;
     this.cfg = { ...DEFAULTS, ...(options.config || {}) };
-    this.onError = options.onError || (() => {});
+    this.onError = options.onError || (() => { });
 
     this.running = false;
     this.rafId = 0;
@@ -99,10 +100,16 @@ export default class LightField {
 
     // nav-button attractor (aspect-corrected image-uv); driven by setButton()
     this._btn = {
+      // target geometry (set by setButton)
       centerAc: new THREE.Vector2(0.5, 0.5),
       halfAc: new THREE.Vector2(0.001, 0.001),
       radiusAc: 0,
-      target: 0 // 1 while a button is hovered, 0 otherwise (ramped in _loop)
+      target: 0, // 1 while a button is hovered, 0 otherwise (ramped in _loop)
+      // current geometry (lerped toward target, fed to the shader) — lets the
+      // orbit slide smoothly from one button to the next instead of snapping
+      curCenter: new THREE.Vector2(0.5, 0.5),
+      curHalf: new THREE.Vector2(0.001, 0.001),
+      curRadius: 0
     };
 
     this._boundResize = this._onResize.bind(this);
@@ -404,6 +411,13 @@ export default class LightField {
     this._btn.centerAc.set(((cx - 0.5) * s.x + 0.5) * a, (cy - 0.5) * s.y + 0.5);
     this._btn.halfAc.set(hx * s.x * a, hy * s.y);
     this._btn.radiusAc = (10 / ch) * s.y; // 10px corner radius, isotropic in ac space
+    // fresh grab (was inactive): snap the orbit to this button. Button-to-button
+    // (already active) leaves current geometry to slide over in _loop.
+    if (this._btn.target === 0) {
+      this._btn.curCenter.copy(this._btn.centerAc);
+      this._btn.curHalf.copy(this._btn.halfAc);
+      this._btn.curRadius = this._btn.radiusAc;
+    }
     this._btn.target = 1;
   }
   clearButton() { this._btn.target = 0; }
@@ -438,12 +452,16 @@ export default class LightField {
       su.uMouseActive.value = 0;
     }
 
-    // nav button attractor: ramp hover strength + feed the current target rect
+    // nav button attractor: ramp hover strength + slide the orbit geometry toward
+    // the current target (smooth button-to-button), then feed the lerped values
     const b = this._btn;
     su.uBtnActive.value += (b.target - su.uBtnActive.value) * c.btnRamp;
-    su.uBtnCenter.value.copy(b.centerAc);
-    su.uBtnHalf.value.copy(b.halfAc);
-    su.uBtnRadius.value = b.radiusAc;
+    b.curCenter.lerp(b.centerAc, c.btnMove);
+    b.curHalf.lerp(b.halfAc, c.btnMove);
+    b.curRadius += (b.radiusAc - b.curRadius) * c.btnMove;
+    su.uBtnCenter.value.copy(b.curCenter);
+    su.uBtnHalf.value.copy(b.curHalf);
+    su.uBtnRadius.value = b.curRadius;
 
     if (!c.reducedMotion) {
       su.uTime.value += dt;
@@ -509,9 +527,11 @@ README — tunables (config passed to LightField / DEFAULTS):
     mouseSmooth (cursor follow), energyDecay (glow relax), energyBoost (glow amount)
 
   NAV BUTTON ATTRACTION (drive via setButton(btnRect, contRect) / clearButton())
-    grains fly to a hovered button + orbit its rounded border, then relax back.
-    btnReach (recruit radius), btnBand (border hug), btnPull (radial onto border),
-    btnSwirl (tangential orbit), btnRamp (hover ramp speed)
+    grains fly to a hovered button + revolve along its rounded border (glowing +
+    enlarged via the energy channel), then drift back when released.
+    btnReach (wide capture: fly-in radius), btnBand (tight ring: orbit hug),
+    btnPull (radial onto border), btnSwirl (revolve speed),
+    btnRamp (hover on/off ramp), btnMove (slide between buttons)
 
   POST
     bloom, bloomStrength, bloomRadius, bloomThreshold (kept high + subtle so the

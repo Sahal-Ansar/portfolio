@@ -50,7 +50,8 @@
 .hero__logo {
   /* Font: Oldschool Tag (drop file in public/fonts/). Will become a Lottie. */
   font-family: 'Oldschool Tag', system-ui, sans-serif;
-  font-size: clamp(2rem, 3.4vw, 50px);
+  /* 50px in the design, scaled to 0.65x per request */
+  font-size: clamp(1.3rem, 2.21vw, 32.5px);
   letter-spacing: -1.5px;
   line-height: 1;
   color: #000;
@@ -69,9 +70,9 @@
 }
 
 .hero__link {
-  /* Font: Mondapick. 24px in the design, scaled down 33% per request. */
+  /* Font: Mondapick. 24px in the design, scaled to 0.8x per request. */
   font-family: 'Mondapick', system-ui, sans-serif;
-  font-size: clamp(0.67rem, 1vw, 16px);
+  font-size: clamp(0.8rem, 1.2vw, 19.2px);
   color: #fff;
   text-decoration: none;
   white-space: nowrap;
@@ -93,9 +94,9 @@
 .hero__arrow {
   position: relative;
   flex: none;
-  /* 24px in the design, scaled down 33% per request */
-  width: clamp(12px, 1vw, 16px);
-  height: clamp(12px, 1vw, 16px);
+  /* 24px in the design, scaled to 0.8x per request */
+  width: clamp(14.4px, 1.2vw, 19.2px);
+  height: clamp(14.4px, 1.2vw, 19.2px);
 }
 .hero__arrow-img {
   position: absolute;
@@ -119,8 +120,9 @@
   justify-content: flex-end;
   gap: clamp(0px, 0.6vw, 10px);
   width: 100%;
-  /* smaller side padding so the fitted "SAHAL ANSAR" spans nearly the full screen */
-  padding: clamp(0.75rem, 1.6vw, 20px) clamp(0.75rem, 2.2vw, 40px);
+  /* side padding sets the inset for the fitted "SAHAL ANSAR" (and I'M, via its
+     auto left-align to the same edge) */
+  padding: clamp(0.75rem, 1.6vw, 20px) clamp(1rem, 3vw, 56px);
 }
 
 .hero__title-line {
@@ -139,6 +141,8 @@
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0;   /* no outline around the glyphs */
+  border: none;
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -150,25 +154,79 @@
   text-align: left;
   font-size: clamp(2.5rem, 10vw, 200px);
   letter-spacing: -0.02em;
-  /* "I'M": 1x #FFFFFF @ soft-light over the photo (2 layers disabled for now) */
+  /* Border-free overlay: the real text is an OPAQUE gold backing so the glyph's
+     antialiased edges never go transparent (no bright canvas "border"). The
+     overlay-photo look is painted on top by ::before; only the ~1px AA edge falls
+     back to this gold, which blends in. */
+  position: relative;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: #d3a24e;
+  -webkit-text-fill-color: #d3a24e;
+}
+.hero__title-top::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* "I'M": 1x #FFFFFF @ overlay over the photo, clipped to the glyphs */
   background-image:
     linear-gradient(#ffffff, #ffffff),
     url('/images/background_new.png');
-  background-blend-mode: soft-light, normal;
+  background-blend-mode: overlay, normal;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero__title-main {
+  position: relative;
   width: 100%;
   text-align: center;
   white-space: nowrap;
   font-size: clamp(3rem, 19vw, 400px);
-  letter-spacing: -0.02em;
+  /* The A–N join is a ligature in Beligat. It only forms with ligatures enabled
+     AND letter-spacing:0 — any non-zero letter-spacing disables ligatures in CSS. */
+  letter-spacing: normal;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures contextual;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1, "hlig" 1;
+  /* opaque silver backing: renders the glyphs (incl. the thin ligature connector)
+     solid, so the hairline can't go transparent and get "cut" over the bright
+     photo. The photo-blend look is painted on top by ::before. */
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: #cfcfcf;
+  -webkit-text-fill-color: #cfcfcf;
+}
+.hero__title-main::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  text-align: center;
   /* "SAHAL ANSAR": #FFFFFF @ hue over #E3E3E3 @ difference over the photo */
   background-image:
     linear-gradient(#ffffff, #ffffff),
     linear-gradient(#e3e3e3, #e3e3e3),
     url('/images/background_new.png');
   background-blend-mode: hue, difference, normal;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 /* ---- small screens ---- */

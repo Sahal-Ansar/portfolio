@@ -31,6 +31,7 @@ export default function Hero() {
   const containerRef = useRef(null);
   const engineRef = useRef(null);
   const mainRef = useRef(null);
+  const clearTimer = useRef(0);
   const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
@@ -138,12 +139,18 @@ export default function Hero() {
 
   // --- nav hover: recruit particles to orbit the hovered button ---
   const onNavEnter = (e) => {
+    clearTimeout(clearTimer.current); // cancel a pending release (hopping between buttons)
     const eng = engineRef.current;
     const cont = containerRef.current;
     if (!eng || !cont) return;
     eng.setButton(e.currentTarget.getBoundingClientRect(), cont.getBoundingClientRect());
   };
-  const onNavLeave = () => engineRef.current?.clearButton();
+  // defer the release a beat so moving to an adjacent button slides the orbit
+  // over (the next enter cancels this) instead of releasing then re-grabbing
+  const onNavLeave = () => {
+    clearTimeout(clearTimer.current);
+    clearTimer.current = setTimeout(() => engineRef.current?.clearButton(), 60);
+  };
 
   return (
     <section className="hero">
@@ -180,8 +187,12 @@ export default function Hero() {
 
         {/* TODO: title fills are placeholders — swap in dictated values. Font: Beligat */}
         <div className="hero__title">
-          <span className="hero__title-line hero__title-top">I&rsquo;M</span>
-          <span ref={mainRef} className="hero__title-line hero__title-main">SAHAL ANSAR</span>
+          {/* data-text drives the ::before overlay copy; keep it identical to the text */}
+          <span className="hero__title-line hero__title-top" data-text="I’M">I&rsquo;M</span>
+          {/* The A–N join is a ligature in Beligat (see CSS: ligatures on +
+              letter-spacing:0). data-text drives the ::before photo-blend copy; an
+              opaque backing keeps the thin ligature connector from being "cut". */}
+          <span ref={mainRef} className="hero__title-line hero__title-main" data-text="SAHAL ANSAR">SAHAL ANSAR</span>
         </div>
       </div>
     </section>

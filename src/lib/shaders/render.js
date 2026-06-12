@@ -71,8 +71,9 @@ void main(){
   float m = texture2D(uMaskTex, pos).r;
   float mask = smoothstep(0.25, 0.6, m);
   // ...but excited/recruited grains (energy) stay visible so they can travel up
-  // to a nav button and orbit it, off the sand.
-  mask = max(mask, energy);
+  // to a nav button and orbit it, off the sand. (Clamp: button grains push energy
+  // past 1 for extra size/glow, but visibility/alpha shouldn't blow out.)
+  mask = max(mask, clamp(energy, 0.0, 1.0));
 
   // strong per-grain variation so the field reads as scattered sparkle, not an
   // even dot-screen: most grains are dim, a sparse few catch the light brightly.
@@ -84,7 +85,8 @@ void main(){
   vec3 scene = texture2D(uBaseTex, pos).rgb;
   vColor = scene * uColorBoost * (0.18 + spark * 1.7) * (1.0 + energy * uEnergyBoost);
 
-  // excited grains (mouse-lit) grow to ~1.325x the base size as well as brighter
+  // excited grains grow + brighten with energy (mouse-lit ~1.325x at energy 1;
+  // button-orbit grains pump energy higher, so they read clearly bigger + glowing)
   gl_PointSize = uGrainSize * (0.35 + spark * 1.2 + r2 * 0.4) * uDpr * life * (1.0 + energy * 0.325);
   vAlpha = life * mask;
 }

@@ -48,10 +48,10 @@ uniform float uBtnActive;    // 0..1 hover ramp
 uniform vec2  uBtnCenter;    // button centre (ac space)
 uniform vec2  uBtnHalf;      // button half-extents (ac space)
 uniform float uBtnRadius;    // corner radius (ac space)
-uniform float uBtnReach;     // capture falloff: how far grains get recruited
-uniform float uBtnBand;      // how tightly grains hug the border while orbiting
-uniform float uBtnPull;      // radial accel onto the border
-uniform float uBtnSwirl;     // tangential accel along the border
+uniform float uBtnReach;     // wide capture falloff: how far grains get recruited
+uniform float uBtnBand;      // tight ring: how close to the border grains revolve
+uniform float uBtnPull;      // radial accel toward the border line
+uniform float uBtnSwirl;     // tangential accel: revolve speed along the border
 `;
 
 const SIM_FUNCS = /* glsl */ `
@@ -61,7 +61,7 @@ bool isDead(vec2 pos, float age, float maxLife){
 
 // pick a random spawn point that is guaranteed to be inside the sand mask
 vec2 spawnPoint(){
-  float s = floor(uTime * 60.0) + uSeed;
+  float s = mod(floor(uTime * 60.0), 1024.0) + uSeed; // wrap so the hash never loses precision over long runtimes
   float r1 = hash12(gl_FragCoord.xy + s);
   float r2 = hash12(gl_FragCoord.xy * 1.7 + s * 3.1);
   vec2 tc = vec2((floor(r1 * uSpawnDim) + 0.5) / uSpawnDim,
@@ -98,7 +98,8 @@ void main(){
     if (uBtnActive > 0.001) {
       vec2 pAc = pos * vec2(uMouseAspect, 1.0);
       float bd = sdRoundBox(pAc - uBtnCenter, uBtnHalf, uBtnRadius);
-      energy = max(energy, exp(-(bd * bd) / (uBtnReach * uBtnReach)) * uBtnActive);
+      float reach = exp(-(bd * bd) / (uBtnReach * uBtnReach)); // glow while flying in + revolving
+      energy = max(energy, reach * uBtnActive * 2.2); // >1 so orbit grains read bigger + glowing
     }
     energy *= max(0.0, 1.0 - uEnergyDecay * uDt);
   }
@@ -120,7 +121,7 @@ void main(){
   vec2 baseVel = normalize(uSlopeDir) * uDriftSpeed;   // slow downhill drift
 
   if (isDead(pos, age, maxLife)) {
-    float s = floor(uTime * 60.0) + uSeed;
+    float s = mod(floor(uTime * 60.0), 1024.0) + uSeed; // wrap so the hash never loses precision over long runtimes
     seed = hash12(gl_FragCoord.xy + s * 5.9);
     float newMax = mix(uLifeMin, uLifeMax, hash12(gl_FragCoord.xy + s * 4.7));
     vec2 jit = (hash22(gl_FragCoord.xy + s * 7.3) - 0.5) * baseVel * 0.6;
@@ -143,17 +144,21 @@ void main(){
   vec2 push = (length(toM) > 1e-4 ? normalize(toM) : vec2(0.0, 1.0));
   acc += (push + vec2(0.0, uMouseLift)) * uMouseStrength * fall;
 
-  // nav button attraction: recruit nearby grains, spring them onto the rounded
-  // border (d -> 0) and push them tangentially so they orbit it. Aspect-corrected
-  // so the box + corners read correctly on screen; force mapped back to image-uv.
+  // nav button attraction: recruit grains within the capture window, spring them
+  // onto the rounded border (a restoring force -> d = 0) and push them tangentially
+  // so they revolve along it. Aspect-corrected so the box + corners read correctly
+  // on screen; force mapped back to image-uv. The global curl + mouse shimmer still
+  // apply, so the revolve keeps a lively, slightly random feel.
   if (uBtnActive > 0.001) {
     vec2 bp = pos * vec2(uMouseAspect, 1.0) - uBtnCenter;
     float bd = sdRoundBox(bp, uBtnHalf, uBtnRadius);
     vec2 bn = sdRoundBoxGrad(bp, uBtnHalf, uBtnRadius);   // outward border normal
-    float reach = exp(-(bd * bd) / (uBtnReach * uBtnReach));
-    float band  = exp(-(bd * bd) / (uBtnBand * uBtnBand));
-    vec2 onto = -bn * (bd >= 0.0 ? 1.0 : -1.0);           // toward the border line
-    vec2 accAc = onto * uBtnPull * reach + perp(bn) * uBtnSwirl * band;
+    float reach = exp(-(bd * bd) / (uBtnReach * uBtnReach)); // wide: attract toward the button (fly in)
+    float ring  = exp(-(bd * bd) / (uBtnBand * uBtnBand));   // tight: revolve only near the border
+    vec2 toward = -bn * sign(bd);                        // toward the border line (0 on it)
+    // wide radial pull flies grains in + confines them to the border; the tight
+    // tangential ring makes them revolve hugging the edge (small orbit, not a big one)
+    vec2 accAc = toward * uBtnPull * reach + perp(bn) * uBtnSwirl * ring;
     acc += accAc * uBtnActive * vec2(1.0 / uMouseAspect, 1.0);
   }
 
