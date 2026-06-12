@@ -3,9 +3,10 @@ import LightField from '../lib/LightField.js';
 import './Hero.css';
 
 // Course-correction phase: focus on matching ref.png's lighting/atmosphere.
-// The nav + hero text and the mouse interaction are intentionally off for now.
+// The nav + hero text stay off for now; mouse interaction is live (grains near
+// the cursor get excited + glow).
 const SHOW_OVERLAY = false;
-const INTERACTION = false;
+const INTERACTION = true;
 
 // --- environment detection ------------------------------------------------
 function prefersReducedMotion() {

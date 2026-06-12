@@ -6,8 +6,10 @@
 //                    tinted with the local scene colour, confined to sand_mask.png.
 //   Post           : a very subtle bloom so the grains catch a soft glow.
 //
-// The only animated element is the sand. Mouse disturbance is wired but inert
-// (cfg.interaction === false) until the next step.
+// The only animated element is the sand. Mouse interaction is live: grains
+// within a region of the cursor get excited (extra shimmer) and glow brighter.
+// (Nav-button attraction is the next step — the swirl force + attractor stubs
+// are already in place for it.)
 //
 // Lifecycle mirrors the reactbits components: imperative init, single rAF loop,
 // pause offscreen/hidden, full WebGL teardown on dispose().
@@ -27,7 +29,7 @@ const SPAWN_DIM = 128; // spawn lookup is SPAWN_DIM^2 in-mask points
 
 export const DEFAULTS = {
   // ---- grains ----
-  simSize: 160,            // grain count = simSize^2 (160 => ~25.6k)
+  simSize: 179,            // grain count = simSize^2 (179 => ~32k, +25% vs 160)
   driftSpeed: 0.03,        // slow downhill drift (image-UV / sec)
   slopeDir: [0.22, -0.62], // downhill direction in image space (y up, so -y = down)
   baseReturn: 1.1,         // relax velocity back to the drift
@@ -43,19 +45,19 @@ export const DEFAULTS = {
   curlSpeed: 0.06,
 
   // ---- grain look ----
-  grainSize: 2.4,          // max size; most grains are much smaller (see shader)
+  grainSize: 2.4,          // base max size; excited grains grow ~1.25x (see shader)
   colorBoost: 1.5,         // grains read a touch brighter than the scene
-  energyBoost: 1.6,        // extra brightness for mouse-disturbed grains
+  energyBoost: 2.66,       // extra brightness for excited (mouse-lit) grains
   fadeIn: 0.4,
   fadeOut: 1.0,
 
-  // ---- mouse disturbance (inert for now) ----
-  interaction: false,
-  mouseStrength: 0.5,
-  mouseRadius: 0.1,
+  // ---- mouse interaction (live) ----
+  interaction: true,
+  mouseStrength: 0.5,      // scatter/lift of excited grains
+  mouseRadius: 0.108,      // size of the excited region (image-v units, circular)
   mouseLift: 0.7,          // upward kick component
   mouseSmooth: 0.18,
-  energyDecay: 2.2,
+  energyDecay: 2.2,        // how fast the glow relaxes once the cursor leaves
 
   // ---- post ----
   bloom: true,
@@ -253,7 +255,8 @@ export default class LightField {
       uBottom: u(c.bottom), uSeed: u(Math.random() * 1000),
       uMouse: u(new THREE.Vector2(0.5, 0.5)), uMouseActive: u(0),
       uMouseStrength: u(c.mouseStrength), uMouseRadius: u(c.mouseRadius),
-      uMouseLift: u(c.mouseLift), uEnergyDecay: u(c.energyDecay)
+      uMouseLift: u(c.mouseLift), uEnergyDecay: u(c.energyDecay),
+      uMouseAspect: u(this.imageAspect) // make the excited region circular on screen
     };
     Object.assign(this.posVar.material.uniforms, this.simUniforms);
     Object.assign(this.velVar.material.uniforms, this.simUniforms);
@@ -449,8 +452,10 @@ README — tunables (config passed to LightField / DEFAULTS):
     grainSize, colorBoost (vs the scene), energyBoost (mouse-disturbed),
     fadeIn, fadeOut
 
-  MOUSE DISTURBANCE (inert until cfg.interaction = true)
-    mouseStrength, mouseRadius, mouseLift (upward kick), mouseSmooth, energyDecay
+  MOUSE INTERACTION (live; cfg.interaction = true)
+    grains near the cursor shimmer + glow. mouseStrength (scatter/lift),
+    mouseRadius (region size, aspect-corrected), mouseLift (upward kick),
+    mouseSmooth (cursor follow), energyDecay (glow relax), energyBoost (glow amount)
 
   POST
     bloom, bloomStrength, bloomRadius, bloomThreshold (kept high + subtle so the

@@ -33,12 +33,13 @@ uniform float uLifeMax;
 uniform float uBottom;       // respawn once a grain falls below this v
 uniform float uSeed;
 
-// --- mouse disturbance (wired later; inert while uMouseActive == 0) ---
+// --- mouse interaction (live while uMouseActive == 1) ---
 uniform vec2  uMouse;        // image uv
 uniform float uMouseActive;
 uniform float uMouseStrength;
 uniform float uMouseRadius;
 uniform float uMouseLift;
+uniform float uMouseAspect;  // image aspect, so the excited region is circular
 uniform float uEnergyDecay;
 `;
 
@@ -77,6 +78,10 @@ void main(){
   } else {
     pos += V.xy * uDt;
     age += uDt;
+    // mouse excitement pumps energy (the glow); it relaxes back once the cursor leaves
+    vec2 dm = (pos - uMouse) * vec2(uMouseAspect, 1.0);
+    float ex = exp(-dot(dm, dm) / (uMouseRadius * uMouseRadius)) * uMouseActive;
+    energy = max(energy, ex);
     energy *= max(0.0, 1.0 - uEnergyDecay * uDt);
   }
 
@@ -108,13 +113,17 @@ void main(){
   // gentle curl turbulence so the fall meanders like real sand
   vec2 acc = curl(pos * uCurlScale, uTime * uCurlSpeed) * uCurlStrength;
 
-  // mouse disturbance: push away from the cursor + a slight upward kick.
-  // Inert while uMouseActive == 0 (interaction added in the next step).
+  // mouse excitement: grains within uMouseRadius of the cursor shimmer harder
+  // and scatter/lift a little. Glow is pumped in the position pass (energy).
+  // Aspect-corrected (uMouseAspect) so the excited region reads circular.
   vec2 toM = pos - uMouse;
-  float d = length(toM);
-  float fall = exp(-(d * d) / (uMouseRadius * uMouseRadius));
-  vec2 push = (d > 1e-4 ? toM / d : vec2(0.0, 1.0));
-  acc += (push + vec2(0.0, uMouseLift)) * uMouseStrength * uMouseActive * fall;
+  vec2 dm = toM * vec2(uMouseAspect, 1.0);
+  float fall = exp(-dot(dm, dm) / (uMouseRadius * uMouseRadius)) * uMouseActive;
+  // shimmer: faster, finer curl right around the cursor
+  acc += curl(pos * uCurlScale * 2.4, uTime * uCurlSpeed * 4.0) * uCurlStrength * fall * 5.0;
+  // gentle scatter + upward kick so the field visibly reacts
+  vec2 push = (length(toM) > 1e-4 ? normalize(toM) : vec2(0.0, 1.0));
+  acc += (push + vec2(0.0, uMouseLift)) * uMouseStrength * fall;
 
   vec2 nvel = V.xy + acc * uDt;
   nvel += (baseVel - nvel) * uBaseReturn * uDt;          // relax to the drift

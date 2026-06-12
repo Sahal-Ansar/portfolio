@@ -81,7 +81,8 @@ void main(){
   vec3 scene = texture2D(uBaseTex, pos).rgb;
   vColor = scene * uColorBoost * (0.18 + spark * 1.7) * (1.0 + energy * uEnergyBoost);
 
-  gl_PointSize = uGrainSize * (0.35 + spark * 1.2 + r2 * 0.4) * uDpr * life;
+  // excited grains (mouse-lit) grow to ~1.25x the base size as well as brighter
+  gl_PointSize = uGrainSize * (0.35 + spark * 1.2 + r2 * 0.4) * uDpr * life * (1.0 + energy * 0.25);
   vAlpha = life * mask;
 }
 `;
