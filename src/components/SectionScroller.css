@@ -1,4 +1,4 @@
-/* viewport-locked window; the track is taller and is translated to snap sections */
+/* viewport-locked window; the sections are translated to snap between panels */
 .snap-root {
   position: fixed;
   inset: 0;
@@ -6,40 +6,28 @@
 }
 
 .snap-track {
-  will-change: transform;
+  position: relative;
 }
 
+/* each panel is viewport-sized and is the element that gets transformed (so a
+   descendant's background-attachment:fixed stays viewport-aligned) */
 .snap-section {
   width: 100vw;
   height: 100vh;
   height: 100svh;
   overflow: hidden;
+  will-change: transform;
 }
 
-/* ---- transition layer (above the sections, driven by scroll progress) ---- */
-.snap-transition {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-}
-
-/* gradual backdrop blur: a soft vertical gradient (GradualBlur-style) so the blur
-   ramps in rather than being a flat sheet. blur strength is animated in JS (0 px
-   when idle = invisible, no opacity needed so backdrop-filter stays valid). */
-.snap-transition__blur {
-  position: absolute;
-  inset: 0;
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), #000 45%, #000 100%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), #000 45%, #000 100%);
-}
-
-/* transition image; opacity is animated in JS, peaking at the midpoint */
-.snap-transition__img {
-  position: absolute;
-  inset: 0;
-  background: #000 center / cover no-repeat url('/images/transition1.png');
-  opacity: 0;
+/* transition "semi page": transition1.png (2000x383) is the hero's bg continued
+   downward. Scale it to the hero's exact horizontal scale (the hero fits its
+   2411x1101 photo to the viewport height: 1101px -> 100vh, so 2000px -> 181.65vh)
+   and pin it to the top, centred, with black below leading into About. */
+.snap-xtn {
+  position: relative;
+  background-color: #000;
+  background-image: url('/images/transition1.png');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 181.65vh auto;
 }

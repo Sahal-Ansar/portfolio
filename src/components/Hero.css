@@ -60,43 +60,24 @@
   pointer-events: auto;
 }
 
-/* glass division: a clearer (low-frost) glass pill. Low blur lets the hero read
-   through; the coloured left/right outer shadows fake the chromatic-aberration
-   fringe of real glass; the ::before is the specular (anisotropy-ish) streak.
-   NOTE: true refraction / chromatic aberration like @react-three/drei's
-   MeshTransmissionMaterial needs a WebGL pass (FluidGlass) — this is the CSS read. */
+/* glass division: a frosted dark pill wrapping the three buttons. backdrop-filter
+   blurs the hero behind it; the inset top highlight is the glass rim. */
 .hero__links {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0;
   padding: 6px;
   border-radius: 24px;
-  overflow: hidden;            /* clip the sheen streak to the pill */
-  background: rgba(18, 18, 26, 0.22);
-  -webkit-backdrop-filter: blur(6px) saturate(165%) brightness(1.06);
-  backdrop-filter: blur(6px) saturate(165%) brightness(1.06);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(12, 12, 16, 0.38);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(16px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),       /* top glass rim */
-    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.22),
-    1.5px 0 9px rgba(255, 60, 90, 0.18),            /* chromatic fringe — warm */
-    -1.5px 0 9px rgba(70, 150, 255, 0.18),          /* chromatic fringe — cool */
-    0 16px 38px rgba(0, 0, 0, 0.3);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.25),
+    0 12px 34px rgba(0, 0, 0, 0.35);
   pointer-events: auto;
-}
-/* specular streak across the glass */
-.hero__links::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(118deg,
-    transparent 34%,
-    rgba(255, 255, 255, 0.16) 49%,
-    rgba(255, 255, 255, 0.04) 53%,
-    transparent 64%);
-  pointer-events: none;
 }
 
 .hero__link {
@@ -112,11 +93,8 @@
   padding: 0 clamp(18px, 2.2vw, 30px);
   border-radius: 16px;
   pointer-events: auto;
-  position: relative;   /* sit above the ::before glass sheen */
-  z-index: 1;
   transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
-/* each button is its own glass cell on hover */
 .hero__link:hover {
   color: #FFC84A;
   background: rgba(255, 255, 255, 0.09);
@@ -172,20 +150,19 @@
   display: block;
 }
 
-/* Both title lines reproduce the Figma fills: layered colours blended (via
-   background-blend-mode) against the hero photo behind them, then clipped to the
-   glyphs. The photo layer is `fixed` so it lines up with the full-screen canvas. */
+/* Both title lines reveal the hero photo through the glyphs (background-clip:text)
+   with the Figma blend modes on top. The photo's size + position are set in JS
+   (alignTitles in Hero.jsx) to match the canvas cover-fit — background-attachment:
+   fixed is unreliable inside the transformed scroller, so we align manually. */
 .hero__title-line {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0;   /* no outline around the glyphs */
+  -webkit-text-stroke: 0;
   border: none;
   background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-  background-attachment: fixed;
+  background-attachment: scroll;
 }
 
 .hero__title-top {
@@ -193,35 +170,11 @@
   text-align: left;
   font-size: clamp(2.5rem, 10vw, 200px);
   letter-spacing: -0.02em;
-  /* Border-free overlay: the real text is an OPAQUE gold backing so the glyph's
-     antialiased edges never go transparent (no bright canvas "border"). The
-     overlay-photo look is painted on top by ::before; only the ~1px AA edge falls
-     back to this gold, which blends in. */
-  position: relative;
-  background: none;
-  -webkit-background-clip: border-box;
-  background-clip: border-box;
-  color: #d3a24e;
-  -webkit-text-fill-color: #d3a24e;
-}
-.hero__title-top::before {
-  content: attr(data-text);
-  position: absolute;
-  left: 0;
-  top: 0;
-  /* "I'M": 1x #FFFFFF @ overlay over the photo, clipped to the glyphs */
+  /* "I'M": #FFFFFF @ overlay over the photo */
   background-image:
     linear-gradient(#ffffff, #ffffff),
     url('/images/background_new.png');
   background-blend-mode: overlay, normal;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-  background-attachment: fixed;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
 }
 
 .hero__title-main {
@@ -230,38 +183,33 @@
   text-align: center;
   white-space: nowrap;
   font-size: clamp(3rem, 19vw, 400px);
-  /* The A–N join is a ligature in Beligat. It only forms with ligatures enabled
-     AND letter-spacing:0 — any non-zero letter-spacing disables ligatures in CSS. */
+  /* A–N join is a ligature in Beligat — needs letter-spacing:0 + the features on */
   letter-spacing: normal;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures contextual;
   font-feature-settings: "liga" 1, "dlig" 1, "calt" 1, "hlig" 1;
-  /* opaque silver backing: renders the glyphs (incl. the thin ligature connector)
-     solid, so the hairline can't go transparent and get "cut" over the bright
-     photo. The photo-blend look is painted on top by ::before. */
-  background: none;
+  /* opaque silver BACKING: the thin A–N ligature connector would go transparent
+     on ::before and get "cut" over the bright photo — the backing fills it solid. */
   -webkit-background-clip: border-box;
   background-clip: border-box;
   color: #cfcfcf;
   -webkit-text-fill-color: #cfcfcf;
 }
+/* the photo-blend, clipped to the glyphs, painted on top of the backing. Its
+   photo size/position are JS-aligned to the canvas via --ph-size / --ph-pos. */
 .hero__title-main::before {
-  content: attr(data-text);
+  content: "SAHAL ANSAR";
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
+  inset: 0;
   text-align: center;
-  /* "SAHAL ANSAR": #FFFFFF @ hue over #E3E3E3 @ difference over the photo */
   background-image:
     linear-gradient(#ffffff, #ffffff),
     linear-gradient(#e3e3e3, #e3e3e3),
     url('/images/background_new.png');
   background-blend-mode: hue, difference, normal;
   background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-  background-attachment: fixed;
+  background-size: auto, auto, var(--ph-size, cover);
+  background-position: 0 0, 0 0, var(--ph-pos, center);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

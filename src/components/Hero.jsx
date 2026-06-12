@@ -31,6 +31,7 @@ export default function Hero({ active = true }) {
   const containerRef = useRef(null);
   const engineRef = useRef(null);
   const mainRef = useRef(null);
+  const topRef = useRef(null);
   const clearTimer = useRef(0);
   const activeRef = useRef(active);
   activeRef.current = active;
@@ -118,29 +119,67 @@ export default function Hero({ active = true }) {
   // stop/start the engine when this section becomes (in)active
   useEffect(() => { updateRunningRef.current(); }, [active]);
 
-  // --- fit "SAHAL ANSAR" to span the full title width (font-metric agnostic) ---
+  // --- fit "SAHAL ANSAR" to span the title width + align the title photo-fills ---
   useEffect(() => {
-    const el = mainRef.current;
-    if (!el) return;
+    const main = mainRef.current;
+    const cont = containerRef.current;
+    if (!main) return;
+
     const fit = () => {
-      const boxW = el.clientWidth; // block + width:100% => available content width
-      // measure the glyph run at a reference size: take it out of flow so it
-      // shrink-wraps to the text regardless of the flex layout around it
-      el.style.position = 'absolute';
-      el.style.width = 'auto';
-      el.style.whiteSpace = 'nowrap';
-      el.style.fontSize = '100px';
-      const textW = el.getBoundingClientRect().width;
-      el.style.position = '';
-      el.style.width = '';
-      el.style.whiteSpace = '';
-      if (textW > 0 && boxW > 0) el.style.fontSize = (100 * boxW / textW) + 'px';
+      const boxW = main.clientWidth; // block + width:100% => available content width
+      // measure the glyph run at a reference size, out of flow so it shrink-wraps
+      main.style.position = 'absolute';
+      main.style.width = 'auto';
+      main.style.whiteSpace = 'nowrap';
+      main.style.fontSize = '100px';
+      const textW = main.getBoundingClientRect().width;
+      main.style.position = '';
+      main.style.width = '';
+      main.style.whiteSpace = '';
+      if (textW > 0 && boxW > 0) main.style.fontSize = (100 * boxW / textW) + 'px';
     };
-    const ro = new ResizeObserver(fit);
+
+    // Position each title's photo layer to match the canvas cover-fit, so the
+    // blend reads against the SAME pixels as the hero behind it. (Done in JS
+    // because background-attachment:fixed misbehaves inside the transformed
+    // scroller.) Measuring relative to the canvas cancels the section transform.
+    const IMG_ASPECT = 2411 / 1104;
+    const alignTitles = () => {
+      if (!cont) return;
+      const cr = cont.getBoundingClientRect();
+      const W = cr.width, Hh = cr.height;
+      if (!W || !Hh) return;
+      let cw, ch;
+      if (W / Hh < IMG_ASPECT) { ch = Hh; cw = Hh * IMG_ASPECT; }
+      else { cw = W; ch = W / IMG_ASPECT; }
+      const ox = (W - cw) / 2, oy = (Hh - ch) / 2;
+      const apply = (el, gradLayers, useVars) => {
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const px = ox - (r.left - cr.left);
+        const py = oy - (r.top - cr.top);
+        if (useVars) {
+          // SAHAL ANSAR: the photo lives on ::before; feed it via custom props
+          el.style.setProperty('--ph-size', `${cw}px ${ch}px`);
+          el.style.setProperty('--ph-pos', `${px}px ${py}px`);
+          return;
+        }
+        const sizes = [], poss = [];
+        for (let i = 0; i < gradLayers; i++) { sizes.push('auto'); poss.push('0 0'); }
+        sizes.push(`${cw}px ${ch}px`); poss.push(`${px}px ${py}px`);
+        el.style.backgroundSize = sizes.join(', ');
+        el.style.backgroundPosition = poss.join(', ');
+      };
+      apply(topRef.current, 1, false);  // I'M: simple clip-text, set directly
+      apply(mainRef.current, 0, true);  // SAHAL ANSAR: backing + ::before, via vars
+    };
+
+    const update = () => { fit(); alignTitles(); };
+    const ro = new ResizeObserver(update);
     ro.observe(document.documentElement);
     let cancelled = false;
-    document.fonts?.ready?.then(() => { if (!cancelled) fit(); });
-    fit();
+    document.fonts?.ready?.then(() => { if (!cancelled) update(); });
+    update();
     return () => { cancelled = true; ro.disconnect(); };
   }, []);
 
@@ -187,14 +226,11 @@ export default function Hero({ active = true }) {
           </div>
         </nav>
 
-        {/* TODO: title fills are placeholders — swap in dictated values. Font: Beligat */}
+        {/* Photo-fill position is JS-aligned to the canvas (alignTitles). Font: Beligat */}
         <div className="hero__title">
-          {/* data-text drives the ::before overlay copy; keep it identical to the text */}
-          <span className="hero__title-line hero__title-top" data-text="I’M">I&rsquo;M</span>
-          {/* The A–N join is a ligature in Beligat (see CSS: ligatures on +
-              letter-spacing:0). data-text drives the ::before photo-blend copy; an
-              opaque backing keeps the thin ligature connector from being "cut". */}
-          <span ref={mainRef} className="hero__title-line hero__title-main" data-text="SAHAL ANSAR">SAHAL ANSAR</span>
+          <span ref={topRef} className="hero__title-line hero__title-top">I&rsquo;M</span>
+          {/* A–N join is a Beligat ligature (single run + letter-spacing:0 + features) */}
+          <span ref={mainRef} className="hero__title-line hero__title-main">SAHAL ANSAR</span>
         </div>
       </div>
     </section>

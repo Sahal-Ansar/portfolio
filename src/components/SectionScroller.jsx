@@ -1,64 +1,56 @@
 import { useEffect, useRef } from 'react';
+import GradualBlur from './GradualBlur.jsx';
 import './SectionScroller.css';
 
-// Full-section snap scroller with a SCRUBBED, premium feel.
+// Three stacked full-viewport panels: HERO -> TRANSITION (transition1.png, the
+// hero background continued downward) -> ABOUT. You don't rest on the transition
+// panel — it's a "semi page" you scroll THROUGH on the way between hero and about.
 //
-// Scroll input drives a progress value `t` (0 = hero, 1 = about) directly, so the
-// page moves VISIBLY from the very first scroll — heavy/slow at the start (the
-// ease curve is flat there), accelerating as you go. Once you cross a small commit
-// threshold it auto-finishes quickly on its own; if you let go before that, it
-// snaps back. There is never a resting half-and-half state.
+// Scroll drives progress `t` (0 = hero, 1 = about) directly, so the page moves
+// visibly from the first scroll — weighty/slow to start (ease-in-out-sine), then
+// accelerating. Past a commit point it auto-finishes; let go before and it eases
+// back. Travel spans two viewport heights (through the transition panel).
 //
-// During the cross, a transition layer (transition1.png + a gradual backdrop blur)
-// rises and peaks at the midpoint, masking the seam between the two animations.
+// IMPORTANT: the transform is applied to each SECTION (a viewport-sized box), not
+// the track. A transform ancestor becomes the reference for descendant
+// `background-attachment: fixed`; keeping it per-section (= viewport size) keeps
+// the title's photo-fill aligned with the hero canvas.
 
-const SENS = 0.0018;     // wheel delta -> progress (higher = less scrolling needed)
-const COMMIT = 0.3;      // progress past which the move auto-completes
-const SNAP_DUR = 500;    // ms for the auto-finish (and snap-back)
-const IDLE = 150;        // ms of no scroll before snapping to the nearest section
-const MAX_BLUR = 18;     // px, peak transition blur
+const SENS = 0.0006;     // wheel delta -> progress (lower = heavier / more scroll)
+const SNAP_POINT = 0.55; // once you scroll PAST the transition midpoint, snap to about
+const SNAP_DUR = 950;    // ms for the auto-finish — long = heavy/premium
+// No back-snap and no idle snap-back: scrolling is a free, weighty scrub; the only
+// auto-move is the forward commit to About once you're past the transition midpoint.
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
-// visible movement: weighty/slow to start but immediately perceptible, then
-// accelerates through the middle and eases out (ease-in-out-sine)
+// weighty but immediately perceptible, accelerates through the middle, eases out
 const easeMove = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
-// auto-finish: fast out, gentle settle
 const easeSnap = (t) => 1 - Math.pow(1 - t, 3);
 
 export default function SectionScroller({ children, onActiveChange }) {
   const trackRef = useRef(null);
-  const blurRef = useRef(null);
-  const imgRef = useRef(null);
-  const count = Array.isArray(children) ? children.length : 1;
+  const kids = Array.isArray(children) ? children : [children];
 
   useEffect(() => {
     const track = trackRef.current;
-    const blur = blurRef.current;
-    const img = imgRef.current;
     if (!track) return;
 
-    const s = { t: 0, animating: false, raf: 0, idle: 0, lastActive: 0 };
+    const s = { t: 0, animating: false, raf: 0, lastActive: 0 };
     const H = () => window.innerHeight;
+    const sections = () => Array.from(track.children);
 
     const render = () => {
-      const v = easeMove(s.t);
-      track.style.transform = `translate3d(0, ${-v * H()}px, 0)`;
-      // transition layer peaks at the midpoint (0 at both ends)
-      const p = Math.sin(clamp01(s.t) * Math.PI);
-      const b = (p * MAX_BLUR).toFixed(2);
-      if (blur) {
-        blur.style.backdropFilter = `blur(${b}px) saturate(${1 + p * 0.3})`;
-        blur.style.webkitBackdropFilter = `blur(${b}px) saturate(${1 + p * 0.3})`;
-      }
-      if (img) img.style.opacity = String(p);
-      // engine runs whenever the hero is at all on screen (t < 1)
-      const want = s.t >= 0.999 ? 1 : 0;
+      // travel spans 2 viewport heights (hero -> transition -> about)
+      const y = -easeMove(s.t) * 2 * H();
+      const tf = `translate3d(0, ${y}px, 0)`;
+      for (const sec of sections()) sec.style.transform = tf;
+      // engine runs while the hero is on screen (it scrolls off around t = 0.5)
+      const want = s.t < 0.5 ? 0 : 1;
       if (want !== s.lastActive) { s.lastActive = want; onActiveChange?.(want); }
     };
     render();
 
     const snapTo = (target) => {
-      clearTimeout(s.idle);
       if (Math.abs(target - s.t) < 0.001) { s.t = target; render(); return; }
       s.animating = true;
       const from = s.t;
@@ -76,14 +68,11 @@ export default function SectionScroller({ children, onActiveChange }) {
     const onWheel = (e) => {
       e.preventDefault(); // jack scroll (also blocks ctrl-zoom)
       if (s.animating) return;
-      clearTimeout(s.idle);
-      const dy = e.deltaY;
-      s.t = clamp01(s.t + dy * SENS);
+      s.t = clamp01(s.t + e.deltaY * SENS);
       render();
-      if (dy > 0 && s.t >= COMMIT) return snapTo(1);
-      if (dy < 0 && s.t <= 1 - COMMIT) return snapTo(0);
-      // released mid-scrub without committing -> settle back to the nearest section
-      s.idle = setTimeout(() => { if (!s.animating) snapTo(s.t < 0.5 ? 0 : 1); }, IDLE);
+      // forward-only: once you've scrolled past the transition midpoint, complete
+      // to About. Scrolling up is a free scrub back — no snap.
+      if (e.deltaY > 0 && s.t >= SNAP_POINT) snapTo(1);
     };
 
     const onKey = (e) => {
@@ -97,12 +86,13 @@ export default function SectionScroller({ children, onActiveChange }) {
     const onTouchMove = (e) => {
       e.preventDefault();
       if (touchY == null || s.animating) return;
-      const dy = touchY - e.touches[0].clientY;
-      s.t = clamp01(s.t + dy * 0.004);
+      const d = touchY - e.touches[0].clientY;
+      s.t = clamp01(s.t + d * 0.0022);
       touchY = e.touches[0].clientY;
       render();
+      if (d > 0 && s.t >= SNAP_POINT) snapTo(1);
     };
-    const onTouchEnd = () => { if (!s.animating) snapTo(s.t < COMMIT ? 0 : s.t > 1 - COMMIT ? 1 : s.t < 0.5 ? 0 : 1); touchY = null; };
+    const onTouchEnd = () => { touchY = null; };
 
     const onResize = () => { if (!s.animating) render(); };
 
@@ -119,23 +109,23 @@ export default function SectionScroller({ children, onActiveChange }) {
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('resize', onResize);
-      clearTimeout(s.idle);
       cancelAnimationFrame(s.raf);
     };
-  }, [count, onActiveChange]);
+  }, [kids.length, onActiveChange]);
 
   return (
     <div className="snap-root">
       <div className="snap-track" ref={trackRef}>
-        {(Array.isArray(children) ? children : [children]).map((child, i) => (
-          <div className="snap-section" key={i}>{child}</div>
-        ))}
-      </div>
+        <div className="snap-section">{kids[0]}</div>
 
-      {/* transition layer: gradual backdrop blur + transition image, peaks mid-cross */}
-      <div className="snap-transition" aria-hidden="true">
-        <div className="snap-transition__blur" ref={blurRef} />
-        <div className="snap-transition__img" ref={imgRef} />
+        {/* transition "semi page": hero background continued downward; soft
+            gradual-blur edges blend it into the hero above and the about below */}
+        <div className="snap-section snap-xtn">
+          <GradualBlur position="top" height="24%" strength={3} divCount={6} curve="bezier" />
+          <GradualBlur position="bottom" height="24%" strength={3} divCount={6} curve="bezier" />
+        </div>
+
+        <div className="snap-section">{kids[1]}</div>
       </div>
     </div>
   );
