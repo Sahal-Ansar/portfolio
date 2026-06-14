@@ -50,8 +50,8 @@
 .hero__logo {
   /* Font: Oldschool Tag (drop file in public/fonts/). Will become a Lottie. */
   font-family: 'Oldschool Tag', system-ui, sans-serif;
-  /* 50px in the design, scaled to 0.65x per request */
-  font-size: clamp(1.3rem, 2.21vw, 32.5px);
+  /* 50px in the design, 0.65x then +10% */
+  font-size: clamp(1.43rem, 2.431vw, 35.75px);
   letter-spacing: -1.5px;
   line-height: 1;
   color: #000;
@@ -81,9 +81,9 @@
 }
 
 .hero__link {
-  /* Font: Mondapick. 24px in the design, scaled to 0.8x per request. */
+  /* Font: Mondapick. 24px in the design, 0.8x then -10%. */
   font-family: 'Mondapick', system-ui, sans-serif;
-  font-size: clamp(0.8rem, 1.2vw, 19.2px);
+  font-size: clamp(0.72rem, 1.08vw, 17.28px);
   color: #fff;
   text-decoration: none;
   white-space: nowrap;
@@ -111,9 +111,9 @@
 .hero__arrow {
   position: relative;
   flex: none;
-  /* 24px in the design, scaled to 0.8x per request */
-  width: clamp(14.4px, 1.2vw, 19.2px);
-  height: clamp(14.4px, 1.2vw, 19.2px);
+  /* 24px in the design, 0.8x then -10% */
+  width: clamp(12.96px, 1.08vw, 17.28px);
+  height: clamp(12.96px, 1.08vw, 17.28px);
 }
 .hero__arrow-img {
   position: absolute;

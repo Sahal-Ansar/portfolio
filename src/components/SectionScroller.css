@@ -19,15 +19,16 @@
   will-change: transform;
 }
 
-/* transition "semi page": transition1.png (2000x383) is the hero's bg continued
-   downward. Scale it to the hero's exact horizontal scale (the hero fits its
-   2411x1101 photo to the viewport height: 1101px -> 100vh, so 2000px -> 181.65vh)
-   and pin it to the top, centred, with black below leading into About. */
+/* transition "semi page": transition1.png (2411x405) is the hero's bg continued
+   downward — SAME width as background_new.png (2411). The hero fits its 2411x1101
+   photo to the viewport height (1101px -> 100vh), so the bg renders 2411px wide =
+   2411/1101 * 100vh = 218.98vh. Matching that width + centring it gives the exact
+   same horizontal alignment as the hero; pinned to the top, black below. */
 .snap-xtn {
   position: relative;
   background-color: #000;
   background-image: url('/images/transition1.png');
   background-repeat: no-repeat;
   background-position: center top;
-  background-size: 181.65vh auto;
+  background-size: 218.98vh auto;
 }

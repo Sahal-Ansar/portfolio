@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import GradualBlur from './GradualBlur.jsx';
 import './SectionScroller.css';
 
 // Three stacked full-viewport panels: HERO -> TRANSITION (transition1.png, the
@@ -118,12 +117,8 @@ export default function SectionScroller({ children, onActiveChange }) {
       <div className="snap-track" ref={trackRef}>
         <div className="snap-section">{kids[0]}</div>
 
-        {/* transition "semi page": hero background continued downward; soft
-            gradual-blur edges blend it into the hero above and the about below */}
-        <div className="snap-section snap-xtn">
-          <GradualBlur position="top" height="24%" strength={3} divCount={6} curve="bezier" />
-          <GradualBlur position="bottom" height="24%" strength={3} divCount={6} curve="bezier" />
-        </div>
+        {/* transition "semi page": hero background continued downward */}
+        <div className="snap-section snap-xtn" />
 
         <div className="snap-section">{kids[1]}</div>
       </div>
